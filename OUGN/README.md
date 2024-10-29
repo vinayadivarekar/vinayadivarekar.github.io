@@ -15,3 +15,4 @@ EOF
 done;
 
 ```
+![Oracle DB](https://www.gravityer.com/_next/image?url=https%3A%2F%2Fvivid-cow-9924242169.media.strapiapp.com%2Foracle_database_18edd9bd15.jpg&w=1080&q=75)
