@@ -1,0 +1,49 @@
+SELECT
+    SESSION_KEY,
+   INPUT_TYPE,
+ STATUS,
+    TO_CHAR(START_TIME, 'YYYY-MM-DD HH24:MI:SS') AS START_TIME,
+    TO_CHAR(END_TIME, 'YYYY-MM-DD HH24:MI:SS') AS END_TIME,
+    ELAPSED_SECONDS,
+    OUTPUT_BYTES / 1024 / 1024 / 1024 AS OUTPUT_GB
+  FROM
+V$RMAN_BACKUP_JOB_DETAILS
+WHERE
+    INPUT_TYPE != 'ARCHIVELOG'
+ORDER BY
+    START_TIME DESC;
+	
+---------------------------------------------------------------------
+SELECT
+    b.name,
+    bp.tag AS backup_tag,
+    bp.handle AS backup_handle,
+    SUM(bp.bytes) / 1024 / 1024 AS backup_size_mb,
+    TO_CHAR(bp.completion_time, 'YYYY-MM-DD HH24:MI:SS') AS completion_time,
+    bp.status AS backup_status
+FROM
+    rc_backup_piece bp
+JOIN
+    rc_database b
+ON
+    bp.db_key = b.db_key
+WHERE
+    b.name = '&dbname'
+	and bp.tag LIKE '%DBAAS_INCR_BACKUP20241217044010%'
+GROUP BY
+    b.name, bp.tag, bp.handle, bp.completion_time, bp.status;
+	
+	----------------------------------------------------------
+	SELECT
+    DB_NAME,
+    HANDLE,
+    SUM(PIECE_SIZE) AS TOTAL_BACKUP_SIZE,
+    COUNT(*) AS PIECE_COUNT,
+    MIN(COMPLETION_TIME) AS FIRST_COMPLETION_TIME,
+    MAX(COMPLETION_TIME) AS LAST_COMPLETION_TIME
+FROM
+    RC_BACKUP_PIECE
+WHERE
+    HANDLE LIKE '%VB$_1069481798_42493764I%'
+GROUP BY
+    DB_NAME, HANDLE;

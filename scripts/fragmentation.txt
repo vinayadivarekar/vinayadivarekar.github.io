@@ -1,0 +1,75 @@
+SELECT 
+    table_name,
+    blocks as allocated_blocks,
+    empty_blocks as unused_blocks,
+    chain_cnt as chained_rows,
+    (empty_blocks / (blocks + 1)) * 100 AS fragmentation_percentage
+FROM 
+    dba_tables
+ORDER BY 
+    fragmentation_percentage ASC; 
+	
+	
+	select 
+    table_name,
+    avg_row_len,
+    round(((blocks*16/1024)),2)||'MB' "TOTAL_SIZE",
+    round((num_rows*avg_row_len/1024/1024),2)||'Mb' "ACTUAL_SIZE",
+    round(((blocks*16/1024)-(num_rows*avg_row_len/1024/1024)),2) ||'MB' "FRAGMENTED_SPACE",
+    (round(((blocks*16/1024)-(num_rows*avg_row_len/1024/1024)),2)/round(((blocks*16/1024)),2))*100 "percentage"
+from 
+    all_tables 
+where
+  round(( (blocks*16/1024) ),2) > 0
+order by FRAGMENTED_SPACE asc;
+
+
+set lines 170
+set pages 10000
+col owner format a30
+col table_name format a30
+col TOTAL_SIZE format 99999999999
+col ACTUAL_SIZE format 999999999999
+col FRAGMENTED_SPACE format 999999999999
+select owner,table_name,blocks,num_rows,avg_row_len,round(((blocks*16/1024)),0) “TOTAL_SIZE”, round((num_rows*avg_row_len
+/1024/1024),0) “ACTUAL_SIZE”, round(((blocks*16/1024)-(num_rows*avg_row_len/1024/1024)),0) “FRAGMENTED_SPACE” from
+dba_tables where owner not in ('SYS','SYSTEM','FDBA','PERFSTAT','DBMON') and round(((blocks*8/1024)-(num_rows*avg_row_len/1024/1024)),2)
+> 100 order by 8 desc;
+
+SB1_DVH.D_FORSIKRING_AVTALE
+
+BEGIN     
+  DBMS_REDEFINITION.CHECK_TABLE (table_name => 'D_FORSIKRING_AVTALE'); 
+END;
+
+
+with function freebytes(segment_owner varchar2, segment_name varchar2, segment_type varchar2,partition_name varchar2) return number as
+ unf number; unfb number; fs1 number; fs1b number; fs2 number; fs2b number; fs3 number; fs3b number; fs4 number; fs4b number; full number; fullb number; 
+begin
+ dbms_space.space_usage(segment_owner,segment_name,segment_type,unf,unfb,fs1,fs1b,fs2,fs2b,fs3,fs3b,fs4,fs4b,full,fullb,partition_name=>partition_name);
+ return unfb+fs1b+fs2b*0.25+fs3b*0.5+fs4b*0.75;
+end;
+select round(freebytes(owner,segment_name,segment_type,partition_name)/1024/1024/1024,3) free_GB,segment_type,owner,segment_name,partition_name
+from dba_segments  where segment_subtype='ASSM' and segment_type in (
+  'TABLE','TABLE PARTITION','TABLE SUBPARTITION','CLUSTER','LOB','LOB PARTITION','LOB SUBPARTITION'
+) order by bytes desc fetch first 10 rows only
+/
+
+
+set serveroutput on
+declare
+ unf number; unfb number; fs1 number; fs1b number; fs2 number; fs2b number; fs3 number; fs3b number; fs4 number; fs4b number; full number; fullb number; 
+begin
+ for i in (select * from (select * from dba_segments where segment_subtype='ASSM' and segment_type in (
+  'TABLE','TABLE PARTITION','TABLE SUBPARTITION','CLUSTER','LOB','LOB PARTITION','LOB SUBPARTITION'
+ ) order by bytes desc) where 100>=rownum)
+ loop
+  begin
+   dbms_space.space_usage(i.owner,i.segment_name,i.segment_type,unf,unfb,fs1,fs1b,fs2,fs2b,fs3,fs3b,fs4,fs4b,full,fullb,partition_name=>i.partition_name);
+   dbms_output.put_line(to_char((unfb+fs1b+fs2b*0.25+fs3b*0.5+fs4b*0.75)/1024/1024/1024,'999G999D999')||' GB free in '||i.segment_type||' "'||i.owner||'"."'||i.segment_name||'" partition "'||i.partition_name||'"');
+  exception
+   when others then dbms_output.put_line(i.segment_type||' "'||i.owner||'"."'||i.segment_name||'" partition "'||i.partition_name||'": '||sqlerrm);
+  end; 
+ end loop;
+end;
+/

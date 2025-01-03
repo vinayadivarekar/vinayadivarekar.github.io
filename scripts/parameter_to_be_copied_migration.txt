@@ -1,0 +1,55 @@
+set lines 200 pages 50000
+set trimout on
+set trimspool on
+col "SQL Commands" for a4000
+spool /home/oracle/OCS/$ORACLE_SID/$ORACLE_SID-sql-commands-for-copy-to-target-db.lst
+select
+	CASE nvl(vs.value,'XXX')
+	  WHEN 'XXX' THEN 'alter system reset '|| vs.name || ' scope=spfile SID=''*'';'  
+	  ELSE
+		CASE
+		  WHEN vs.name = 'audit_trail' AND vs.value = 'OS' THEN 'alter system set '|| vs.name || '=''NONE'' scope=spfile SID=''*'';' 
+		  ELSE
+			CASE vs.type
+			  WHEN 2 THEN 'alter system set '|| vs.name || '=''' || vs.value || ''' scope=spfile SID=''*'';' 
+			  ELSE 'alter system set '|| vs.name || '=' || vs.value || ' scope=spfile SID=''*'';' 
+			END
+		END
+	END as "SQL Commands"
+from
+	v$parameter vs
+where
+	lower(vs.name) in ('audit_sys_operations','audit_syslog_level','audit_trail','awr_snapshot_time_offset','control_file_record_keep_time','db_cache_size','db_domain','db_flashback_retention_target','distributed_lock_timeout','enable_ddl_logging','global_names','inmemory_max_populate_servers','log_archive_max_processes','log_buffer','nls_length_semantics','open_cursors','parallel_force_local','processes','query_rewrite_integrity','remote_dependencies_mode','resumable_timeout','session_cached_cursors','shared_pool_reserved_size','shared_pool_size','undo_retention','db_recovery_file_dest_size')
+order by vs.name;
+spool off
+
+
+set lines 200 pages 50000
+set trimout on
+set trimspool on
+col "SQL Commands" for a180
+spool /home/oracle/OCS/$ORACLE_SID/$ORACLE_SID-sql-commands-documentation-only-db.lst
+select
+	CASE nvl(vs.value,'XXX')
+	  WHEN 'XXX' THEN 'rem alter system reset '|| vs.name || ' scope=spfile SID=''*'';' 
+	--  || ' -- '||vs.update_comment
+	  ELSE
+		CASE
+		  WHEN vs.name = 'audit_trail' AND vs.value = 'OS' THEN 'rem alter system set '|| vs.name || '=''NONE'' scope=spfile SID=''*'';' 
+		-- || ' -- '||vs.update_comment
+		  ELSE
+			CASE vs.type
+			  WHEN 2 THEN 'rem alter system set '|| vs.name || '=''' || vs.value || ''' scope=spfile SID=''*'';'
+			-- || ' --'||vs.update_comment
+			  ELSE 'rem alter system set '|| vs.name || '=' || vs.value || ' scope=spfile SID=''*'';' 
+			-- || ' --'||vs.update_comment
+			END
+		END
+	END as "SQL Commands"
+from
+	v$parameter vs
+where  vs.ismodified <> 'FALSE'
+and 	lower(vs.name) NOT in ('audit_sys_operations','audit_syslog_level','audit_trail','awr_snapshot_time_offset','control_file_record_keep_time','db_cache_size','db_domain','db_flashback_retention_target','distributed_lock_timeout','enable_ddl_logging','global_names','inmemory_max_populate_servers','log_archive_max_processes','log_buffer','nls_length_semantics','open_cursors','parallel_force_local','processes','query_rewrite_integrity','remote_dependencies_mode','resumable_timeout','session_cached_cursors','shared_pool_reserved_size','shared_pool_size','undo_retention','db_recovery_file_dest_size')
+order by vs.name;
+spool off
+rem exit;
